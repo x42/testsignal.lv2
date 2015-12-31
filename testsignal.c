@@ -135,6 +135,7 @@ gen_square (TestSignal *self, uint32_t n_samples)
 		out[i] = sinf (2.0f * M_PI * phase) > 0 ? .089125f : -.089125f;
 		phase += phase_inc;
 	}
+	self->phase = fmodf (phase, 1.0);
 }
 
 static void
