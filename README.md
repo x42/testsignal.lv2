@@ -9,13 +9,13 @@ It has 6 operation modes:
 *   Square Wave 1kHz, -21dBFS = -18dB RMS
 *   Uniform White Noise, -18dB RMS
 *   Gaussian Shaped White Noise, -18dB RMS
-*   Pink Noise , -18dB RMS
-*   Impulses (1 sample spike) 100 Hz, 0dBFS
+*   Pink Noise, -18dB RMS
+*   Impulses (1 sample spike) 100Hz, 0dBFS
 
 Install
 -------
 
-Compiling this plugin requires LV2 SDK, gnu-make and a c-compiler.
+Compiling this plugin requires the LV2 SDK, gnu-make and a c-compiler.
 
 ```bash
   git clone git://github.com/x42/testsignal.lv2.git
