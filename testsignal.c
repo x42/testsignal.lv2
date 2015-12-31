@@ -38,16 +38,19 @@ typedef enum {
 } PortIndex;
 
 typedef struct {
+	// plugin ports
 	float* mode;
 	float* output;
 
+	// sine/square wave generator state
 	float  phase;
 	float  phase_inc;
 
+	// impulse period counters
 	uint32_t k_cnt;
 	uint32_t k_period;
 
-	// random numbers
+	// pseudo-random number state
 	uint32_t rseed;
 	bool  g_pass;
 	float g_rn1;
@@ -55,55 +58,57 @@ typedef struct {
 
 } TestSignal;
 
-// random number
+
+/* pseudo-random number generators */
 
 static inline uint32_t
 rand_int (TestSignal *self)
 {
-  // 31bit Park-Miller-Carta Pseudo-Random Number Generator
-  // http://www.firstpr.com.au/dsp/rand31/
-  uint32_t hi, lo;
-  lo = 16807 * (self->rseed & 0xffff);
-  hi = 16807 * (self->rseed >> 16);
+	// 31bit Park-Miller-Carta Pseudo-Random Number Generator
+	// http://www.firstpr.com.au/dsp/rand31/
+	uint32_t hi, lo;
+	lo = 16807 * (self->rseed & 0xffff);
+	hi = 16807 * (self->rseed >> 16);
 
-  lo += (hi & 0x7fff) << 16;
-  lo += hi >> 15;
-  lo = (lo & 0x7fffffff) + (lo >> 31);
-  return (self->rseed = lo);
+	lo += (hi & 0x7fff) << 16;
+	lo += hi >> 15;
+	lo = (lo & 0x7fffffff) + (lo >> 31);
+	return (self->rseed = lo);
 }
 
 static inline float
 rand_float (TestSignal *self)
 {
-  return (rand_int (self) / 1073741824.f) - 1.f;
+	return (rand_int (self) / 1073741824.f) - 1.f;
 }
 
 static float
 rand_gauss (TestSignal *self)
 {
-  // Gaussian White Noise
-  // http://www.musicdsp.org/archive.php?classid=0#109
-  float x1, x2, r;
-  
-  if (self->g_pass) {
-    self->g_pass = false;
-    return self->g_rn1;
-  } 
-  
-  do {
-    x1 = rand_float (self);
-    x2 = rand_float (self);
-    r = x1 * x1 + x2 * x2;
-  } while ((r >= 1.0f) || (r < 1e-22f));
-  
-  r = sqrtf (-2.f * logf (r) / r);
-  
-  self->g_pass = true;
-  self->g_rn1 = r * x2;
-  return r * x1;
+	// Gaussian White Noise
+	// http://www.musicdsp.org/archive.php?classid=0#109
+	float x1, x2, r;
+
+	if (self->g_pass) {
+		self->g_pass = false;
+		return self->g_rn1;
+	}
+
+	do {
+		x1 = rand_float (self);
+		x2 = rand_float (self);
+		r = x1 * x1 + x2 * x2;
+	} while ((r >= 1.0f) || (r < 1e-22f));
+
+	r = sqrtf (-2.f * logf (r) / r);
+
+	self->g_pass = true;
+	self->g_rn1 = r * x2;
+	return r * x1;
 }
 
-// generators
+
+/* signal generators */
 
 static void
 gen_sine (TestSignal *self, uint32_t n_samples)
@@ -112,7 +117,7 @@ gen_sine (TestSignal *self, uint32_t n_samples)
 	float phase = self->phase;
 	const float phase_inc = self->phase_inc;
 
-	for (uint32_t i = 0 ; i < n_samples; ++i) { 
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		out[i] = .12589f * sinf (2.0f * M_PI * phase);
 		phase += phase_inc;
 	}
@@ -126,7 +131,7 @@ gen_square (TestSignal *self, uint32_t n_samples)
 	float phase = self->phase;
 	const float phase_inc = self->phase_inc;
 
-	for (uint32_t i = 0 ; i < n_samples; ++i) { 
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		out[i] = sinf (2.0f * M_PI * phase) > 0 ? .089125f : -.089125f;
 		phase += phase_inc;
 	}
@@ -136,7 +141,7 @@ static void
 gen_uniform_white (TestSignal *self, uint32_t n_samples)
 {
 	float *out = self->output;
-	for (uint32_t i = 0 ; i < n_samples; ++i) { 
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		out[i] = .158489f * rand_float (self);
 	}
 }
@@ -145,7 +150,7 @@ static void
 gen_gaussian_white (TestSignal *self, uint32_t n_samples)
 {
 	float *out = self->output;
-	for (uint32_t i = 0 ; i < n_samples; ++i) { 
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		out[i] = .089125f * rand_gauss (self);
 	}
 }
@@ -167,7 +172,7 @@ gen_pink (TestSignal *self, uint32_t n_samples)
 	while (n_samples-- > 0) {
 		// Paul Kellet's refined method
 		// http://www.musicdsp.org/files/pink.txt
-		// NB. If 'white' consists of uniform random numbers,                                                                                                                                  
+		// NB. If 'white' consists of uniform random numbers,
 		// the pink noise will have an almost gaussian distribution.
 		const float white = .0498f * rand_float (self);
 		_b0 = .99886f * _b0 + white * .0555179f;
@@ -179,6 +184,8 @@ gen_pink (TestSignal *self, uint32_t n_samples)
 		*out++ = _b0 + _b1 + _b2 + _b3 + _b4 + _b5 + _b6 + white * 0.5362f;
 		_b6 = white * 0.115926f;
 	}
+
+	// copy back variables
 	self->b0 = _b0;
 	self->b1 = _b1;
 	self->b2 = _b2;
@@ -201,10 +208,12 @@ gen_kroneker_delta (TestSignal *self, uint32_t n_samples)
 		out[k_cnt] = 1.0f;
 		k_cnt += k_period;
 	}
+
 	self->k_cnt = k_cnt - n_samples;
 }
 
-// LV2
+
+/* LV2 */
 
 static LV2_Handle
 instantiate (const LV2_Descriptor*     descriptor,
