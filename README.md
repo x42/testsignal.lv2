@@ -1,16 +1,17 @@
 testsignal.lv2
 ==============
 
-testsignal.lv2 is an audio-plugin for generating test-signals,
+testsignal.lv2 is an audio-plugin for generating test-signals
 in [LV2](http://lv2plug.in) format.
 
-It has 6 operation modes:
+It has 7 operation modes:
 *   Sine Wave 1kHz, -18dBFS = -18dB RMS
 *   Square Wave 1kHz, -21dBFS = -18dB RMS
 *   Uniform White Noise, -18dB RMS
 *   Gaussian Shaped White Noise, -18dB RMS
 *   Pink Noise, -18dB RMS
 *   Impulses (1 sample spike) 100Hz, 0dBFS
+*   Sine Sweep 20Hz to 20KHz (at most to samplerate / 2) in 10 seconds, -18dBFS
 
 Install
 -------

@@ -50,6 +50,12 @@ typedef struct {
 	uint32_t k_cnt;
 	uint32_t k_period;
 
+	// sweep settings
+	double swp_log_a, swp_log_b;
+	// sweep counter
+	uint32_t swp_period;
+	uint32_t swp_cnt;
+
 	// pseudo-random number state
 	uint32_t rseed;
 	bool  g_pass;
@@ -213,6 +219,23 @@ gen_kroneker_delta (TestSignal *self, uint32_t n_samples)
 	self->k_cnt = k_cnt - n_samples;
 }
 
+static void
+gen_sine_log_sweep (TestSignal *self, uint32_t n_samples)
+{
+
+	float *out = self->output;
+	uint32_t swp_cnt = self->swp_cnt;
+	const uint32_t swp_period = self->swp_period;
+	const double swp_log_a = self->swp_log_a;
+	const double swp_log_b = self->swp_log_b;
+
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
+		const double phase = swp_log_a * exp (swp_log_b * swp_cnt) - swp_log_a;
+		out[i] = .12589f * sin (2. * M_PI * (phase - floor (phase)));
+		swp_cnt = (swp_cnt + 1) % swp_period;
+	}
+	self->swp_cnt = swp_cnt;
+}
 
 /* LV2 */
 
@@ -222,10 +245,22 @@ instantiate (const LV2_Descriptor*     descriptor,
              const char*               bundle_path,
              const LV2_Feature* const* features)
 {
+	if (rate < 8000) {
+		return NULL;
+	}
+
 	TestSignal* self = (TestSignal*)calloc (1, sizeof (TestSignal));
 
+	// impulse 100Hz
 	self->phase_inc = 1000 / rate;
 	self->k_period = rate / 100;
+
+	// log frequency sweep
+	const double f_min = 20.;
+	const double f_max = (rate * .5) < 20000. ? (rate * .5) : 20000.;
+	self->swp_period = ceil (10.0 * rate); // 10 seconds
+	self->swp_log_b = log (f_max / f_min) / self->swp_period;
+	self->swp_log_a = f_min / (self->swp_log_b * rate);
 
 	self->rseed = time (NULL) % UINT_MAX;
 	if (self->rseed == 0) self->rseed = 1;
@@ -260,7 +295,8 @@ run (LV2_Handle instance, uint32_t n_samples)
 	else if (mode <= 2) { gen_uniform_white (self, n_samples); }
 	else if (mode <= 3) { gen_gaussian_white (self, n_samples); }
 	else if (mode <= 4) { gen_pink (self, n_samples); }
-	else                { gen_kroneker_delta (self, n_samples); }
+	else if (mode <= 5) { gen_kroneker_delta (self, n_samples); }
+	else                { gen_sine_log_sweep (self, n_samples); }
 }
 
 static void
