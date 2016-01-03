@@ -34,13 +34,20 @@
 
 typedef enum {
 	TST_MODE   = 0,
-	TST_OUTPUT = 1
+	TST_REFLEV = 1,
+	TST_OUTPUT = 2
 } PortIndex;
 
 typedef struct {
 	// plugin ports
 	float* mode;
+	float* reflevel;
 	float* output;
+
+	// signal level
+	float  lvl_db; // corresponds to 'reflevel'
+	float  lvl_coeff_target;
+	float  lvl_coeff;
 
 	// sine/square wave generator state
 	float  phase;
@@ -122,9 +129,10 @@ gen_sine (TestSignal *self, uint32_t n_samples)
 	float *out = self->output;
 	float phase = self->phase;
 	const float phase_inc = self->phase_inc;
+	const float level = self->lvl_coeff;
 
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = .12589f * sinf (2.0f * M_PI * phase);
+		out[i] = level * sinf (2.0f * M_PI * phase);
 		phase += phase_inc;
 	}
 	self->phase = fmodf (phase, 1.0);
@@ -136,9 +144,10 @@ gen_square (TestSignal *self, uint32_t n_samples)
 	float *out = self->output;
 	float phase = self->phase;
 	const float phase_inc = self->phase_inc;
+	const float level = self->lvl_coeff;
 
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = sinf (2.0f * M_PI * phase) > 0 ? .089125f : -.089125f;
+		out[i] = sinf (2.0f * M_PI * phase) > 0 ? level : - level;
 		phase += phase_inc;
 	}
 	self->phase = fmodf (phase, 1.0);
@@ -147,18 +156,20 @@ gen_square (TestSignal *self, uint32_t n_samples)
 static void
 gen_uniform_white (TestSignal *self, uint32_t n_samples)
 {
+	const float level = self->lvl_coeff;
 	float *out = self->output;
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = .158489f * rand_float (self);
+		out[i] = level * rand_float (self);
 	}
 }
 
 static void
 gen_gaussian_white (TestSignal *self, uint32_t n_samples)
 {
+	const float level = self->lvl_coeff * 0.7079f;
 	float *out = self->output;
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = .089125f * rand_gauss (self);
+		out[i] = level * rand_gauss (self);
 	}
 }
 
@@ -166,6 +177,7 @@ static void
 gen_pink (TestSignal *self, uint32_t n_samples)
 {
 	float *out = self->output;
+	const float level = self->lvl_coeff / 2.527f;
 
 	// localize variables
 	float _b0 = self->b0;
@@ -181,7 +193,7 @@ gen_pink (TestSignal *self, uint32_t n_samples)
 		// http://www.musicdsp.org/files/pink.txt
 		// NB. If 'white' consists of uniform random numbers,
 		// the pink noise will have an almost gaussian distribution.
-		const float white = .0498f * rand_float (self);
+		const float white = level * rand_float (self);
 		_b0 = .99886f * _b0 + white * .0555179f;
 		_b1 = .99332f * _b1 + white * .0750759f;
 		_b2 = .96900f * _b2 + white * .1538520f;
@@ -279,6 +291,9 @@ connect_port (LV2_Handle instance,
 	case TST_MODE:
 		self->mode = data;
 		break;
+	case TST_REFLEV:
+		self->reflevel = data;
+		break;
 	case TST_OUTPUT:
 		self->output = data;
 		break;
@@ -289,6 +304,16 @@ static void
 run (LV2_Handle instance, uint32_t n_samples)
 {
 	TestSignal* self = (TestSignal*)instance;
+	if (self->lvl_db != *self->reflevel) {
+		self->lvl_db = *self->reflevel;
+		float db = self->lvl_db;
+		if (db < -24) db = -24;
+		if (db > -9)  db = -9;
+		self->lvl_coeff_target = powf (10, 0.05 * db);
+	}
+
+	self->lvl_coeff += .1 * (self->lvl_coeff_target - self->lvl_coeff) + 1e-12;
+
 	int mode = rint (*self->mode);
 	if (mode <= 0)      { gen_sine (self, n_samples); }
 	else if (mode <= 1) { gen_square (self, n_samples); }

@@ -5,13 +5,20 @@ testsignal.lv2 is an audio-plugin for generating test-signals
 in [LV2](http://lv2plug.in) format.
 
 It has 7 operation modes:
-*   Sine Wave 1kHz, -18dBFS = -18dB RMS
-*   Square Wave 1kHz, -21dBFS = -18dB RMS
-*   Uniform White Noise, -18dB RMS
-*   Gaussian Shaped White Noise, -18dB RMS
-*   Pink Noise, -18dB RMS
+*   Sine Wave 1kHz
+*   Square Wave 1kHz
+*   Sine Sweep 20Hz to 20KHz (at most to samplerate / 2) in 10 seconds
+*   Uniform White Noise
+*   Gaussian Shaped White Noise
+*   Pink Noise
 *   Impulses (1 sample spike) 100Hz, 0dBFS
-*   Sine Sweep 20Hz to 20KHz (at most to samplerate / 2) in 10 seconds, -18dBFS
+
+
+The signal level can be varied between -24dBFS and -9dBFS and defaults to -18dBFS.
+*   For sine level defines the peak-signal (RMS is identical)
+*   For square-wave generator the level defines the peak-signal (RMS is +3dB)
+*   For uniform white noise, the level defines the absolute peak (RMS is about -1.8dB below peak)
+*   For Gaussian shaped white noise and pink-noise, the level sets the RMS (peak is unlimited, though usually less than +12dB above RMS)
 
 Install
 -------
