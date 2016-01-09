@@ -35,13 +35,13 @@
 			rdfs:label "1KHz Square Wave" ;
 			rdf:value 1;
 		] , [
-			rdfs:label "Uniform White Noise (RMS)" ;
+			rdfs:label "Uniform White Noise" ;
 			rdf:value 2;
 		] , [
-			rdfs:label "Gaussian White Noise (RMS)" ;
+			rdfs:label "Gaussian White Noise" ;
 			rdf:value 3;
 		] , [
-			rdfs:label "Pink Noise (RMS)" ;
+			rdfs:label "Pink Noise" ;
 			rdf:value 4;
 		] , [
 			rdfs:label "Impulses 0dBFS, 100Hz" ;
