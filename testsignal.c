@@ -55,7 +55,9 @@ typedef struct {
 
 	// impulse period counters
 	uint32_t k_cnt;
-	uint32_t k_period;
+	uint32_t k_period100;
+	uint32_t k_period1;
+	uint32_t k_period5s;
 
 	// sweep settings
 	double swp_log_a, swp_log_b;
@@ -215,17 +217,16 @@ gen_pink (TestSignal *self, uint32_t n_samples)
 }
 
 static void
-gen_kroneker_delta (TestSignal *self, uint32_t n_samples)
+gen_kroneker_delta (TestSignal *self, uint32_t n_samples, const uint32_t period)
 {
 	float *out = self->output;
 	memset (out, 0, n_samples * sizeof (float));
 
 	uint32_t k_cnt = self->k_cnt;
-	const uint32_t k_period = self->k_period;
 
 	while (n_samples > k_cnt) {
 		out[k_cnt] = 1.0f;
-		k_cnt += k_period;
+		k_cnt += period;
 	}
 
 	self->k_cnt = k_cnt - n_samples;
@@ -263,9 +264,10 @@ instantiate (const LV2_Descriptor*     descriptor,
 
 	TestSignal* self = (TestSignal*)calloc (1, sizeof (TestSignal));
 
-	// impulse 100Hz
 	self->phase_inc = 1000 / rate;
-	self->k_period = rate / 100;
+	self->k_period100 = rate / 100;
+	self->k_period1   = rate;
+	self->k_period5s  = rate * 5;
 
 	// log frequency sweep
 	const double f_min = 20.;
@@ -320,8 +322,10 @@ run (LV2_Handle instance, uint32_t n_samples)
 	else if (mode <= 2) { gen_uniform_white (self, n_samples); }
 	else if (mode <= 3) { gen_gaussian_white (self, n_samples); }
 	else if (mode <= 4) { gen_pink (self, n_samples); }
-	else if (mode <= 5) { gen_kroneker_delta (self, n_samples); }
-	else                { gen_sine_log_sweep (self, n_samples); }
+	else if (mode <= 5) { gen_kroneker_delta (self, n_samples, self->k_period100); }
+	else if (mode <= 6) { gen_sine_log_sweep (self, n_samples); }
+	else if (mode <= 7) { gen_kroneker_delta (self, n_samples, self->k_period1); }
+	else                { gen_kroneker_delta (self, n_samples, self->k_period5s); }
 }
 
 static void
