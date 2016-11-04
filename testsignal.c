@@ -233,6 +233,30 @@ gen_kroneker_delta (TestSignal *self, uint32_t n_samples, const uint32_t period)
 }
 
 static void
+gen_sawtooth (TestSignal *self, uint32_t n_samples, const uint32_t period)
+{
+	float *out = self->output;
+	uint32_t k_cnt = self->k_cnt % period;
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
+		out[i] = -1.f + 2.f * k_cnt / (float) period;
+		k_cnt = (k_cnt + 1) % period;
+	}
+	self->k_cnt = k_cnt;
+}
+
+static void
+gen_triangle (TestSignal *self, uint32_t n_samples, const uint32_t period)
+{
+	float *out = self->output;
+	uint32_t k_cnt = self->k_cnt % period;
+	for (uint32_t i = 0 ; i < n_samples; ++i) {
+		out[i] = -1.f + 2.f * fabsf (1 - 2.f * k_cnt / (float) period);
+		k_cnt = (k_cnt + 1) % period;
+	}
+	self->k_cnt = k_cnt;
+}
+
+static void
 gen_sine_log_sweep (TestSignal *self, uint32_t n_samples)
 {
 
@@ -325,7 +349,9 @@ run (LV2_Handle instance, uint32_t n_samples)
 	else if (mode <= 5) { gen_kroneker_delta (self, n_samples, self->k_period100); }
 	else if (mode <= 6) { gen_sine_log_sweep (self, n_samples); }
 	else if (mode <= 7) { gen_kroneker_delta (self, n_samples, self->k_period1); }
-	else                { gen_kroneker_delta (self, n_samples, self->k_period5s); }
+	else if (mode <= 8) { gen_kroneker_delta (self, n_samples, self->k_period5s); }
+	else if (mode <= 9) { gen_sawtooth  (self, n_samples, self->k_period100); }
+	else                { gen_triangle  (self, n_samples, self->k_period100); }
 }
 
 static void

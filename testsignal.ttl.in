@@ -26,7 +26,7 @@
 		lv2:name "Mode";
 		lv2:default 0 ;
 		lv2:minimum 0 ;
-		lv2:maximum 8 ;
+		lv2:maximum 10 ;
 		lv2:portProperty lv2:integer,  lv2:enumeration;
 		lv2:scalePoint [
 			rdfs:label "1KHz Sine Wave" ;
@@ -55,6 +55,12 @@
 		] , [
 			rdfs:label "Impulses 0dBFS, 5s (0.2Hz)" ;
 			rdf:value 8;
+		] , [
+			rdfs:label "Sawtooth 0dBFS, 100Hz" ;
+			rdf:value 9;
+		] , [
+			rdfs:label "Triangle 0dBFS, 100Hz" ;
+			rdf:value 10;
 		];
 	] , [
 		a lv2:InputPort ,
