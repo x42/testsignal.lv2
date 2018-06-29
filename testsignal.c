@@ -134,25 +134,25 @@ gen_sine (TestSignal *self, uint32_t n_samples)
 	const float level = self->lvl_coeff;
 
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = level * sinf (2.0f * M_PI * phase);
+		out[i] = level * sinf (phase);
 		phase += phase_inc;
 	}
-	self->phase = fmodf (phase, 1.0);
+	self->phase = fmodf (phase, 2.0 * M_PI);
 }
 
 static void
 gen_square (TestSignal *self, uint32_t n_samples)
 {
 	float *out = self->output;
-	float phase = self->phase;
+	double phase = self->phase;
 	const float phase_inc = self->phase_inc;
 	const float level = self->lvl_coeff;
 
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = sinf (2.0f * M_PI * phase) > 0 ? level : - level;
+		out[i] = sinf (phase) >= 0 ? level : - level;
 		phase += phase_inc;
 	}
-	self->phase = fmodf (phase, 1.0);
+	self->phase = fmod (phase, 2.0 * M_PI);
 }
 
 static void
@@ -288,7 +288,7 @@ instantiate (const LV2_Descriptor*     descriptor,
 
 	TestSignal* self = (TestSignal*)calloc (1, sizeof (TestSignal));
 
-	self->phase_inc = 1000 / rate;
+	self->phase_inc = 2 * M_PI * 1000 / rate;
 	self->k_period100 = rate / 100;
 	self->k_period1   = rate;
 	self->k_period5s  = rate * 5;
