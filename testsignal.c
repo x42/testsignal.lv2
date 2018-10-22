@@ -32,6 +32,13 @@
 
 #define TST_URI "http://gareus.org/oss/lv2/testsignal"
 
+#if INTPTR_MAX == INT64_MAX
+#warning PCG-random
+#define PCGRANDOM
+#else
+#warning LCG-random
+#endif
+
 typedef enum {
 	TST_MODE   = 0,
 	TST_REFLEV = 1,
@@ -66,7 +73,12 @@ typedef struct {
 	uint32_t swp_cnt;
 
 	// pseudo-random number state
+#ifdef PCGRANDOM
+	uint64_t rseed;
+#else
 	uint32_t rseed;
+#endif
+
 	bool  g_pass;
 	float g_rn1;
 	float b0, b1, b2, b3, b4, b5, b6; // pink noise
@@ -79,6 +91,13 @@ typedef struct {
 static inline uint32_t
 rand_int (TestSignal *self)
 {
+#ifdef PCGRANDOM
+	uint64_t oldstate = self->rseed;
+	self->rseed = oldstate * 6364136223846793005ULL + 1;
+	uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+	uint32_t rot = oldstate >> 59u;
+	return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+#else
 	// 31bit Park-Miller-Carta Pseudo-Random Number Generator
 	// http://www.firstpr.com.au/dsp/rand31/
 	uint32_t hi, lo;
@@ -89,12 +108,17 @@ rand_int (TestSignal *self)
 	lo += hi >> 15;
 	lo = (lo & 0x7fffffff) + (lo >> 31);
 	return (self->rseed = lo);
+#endif
 }
 
 static inline float
 rand_float (TestSignal *self)
 {
+#ifdef PCGRANDOM
+	return (rand_int (self) / 2147483648.f) - 1.f;
+#else
 	return (rand_int (self) / 1073741824.f) - 1.f;
+#endif
 }
 
 static float
@@ -300,8 +324,12 @@ instantiate (const LV2_Descriptor*     descriptor,
 	self->swp_log_b = log (f_max / f_min) / self->swp_period;
 	self->swp_log_a = f_min / (self->swp_log_b * rate);
 
+#ifdef PCGRANDOM
+	self->rseed = time (NULL) ^ (intptr_t)self;
+#else
 	self->rseed = (time (NULL) + (intptr_t)self) % INT_MAX;
 	if (self->rseed == 0) self->rseed = 1;
+#endif
 
 	return (LV2_Handle)self;
 }
