@@ -300,7 +300,7 @@ instantiate (const LV2_Descriptor*     descriptor,
 	self->swp_log_b = log (f_max / f_min) / self->swp_period;
 	self->swp_log_a = f_min / (self->swp_log_b * rate);
 
-	self->rseed = time (NULL) % UINT_MAX;
+	self->rseed = (time (NULL) + (intptr_t)self) % INT_MAX;
 	if (self->rseed == 0) self->rseed = 1;
 
 	return (LV2_Handle)self;
