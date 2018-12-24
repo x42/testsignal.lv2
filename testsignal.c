@@ -1,6 +1,6 @@
 /* testsignal -- LV2 test-tone generator
  *
- * Copyright (C) 2015 Robin Gareus <robin@gareus.org>
+ * Copyright (C) 2015,2018 Robin Gareus <robin@gareus.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -261,8 +261,10 @@ gen_sawtooth (TestSignal *self, uint32_t n_samples, const uint32_t period)
 {
 	float *out = self->output;
 	uint32_t k_cnt = self->k_cnt % period;
+	const float level = self->lvl_coeff;
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		out[i] = -1.f + 2.f * k_cnt / (float) period;
+		out[i] *= level;
 		k_cnt = (k_cnt + 1) % period;
 	}
 	self->k_cnt = k_cnt;
@@ -273,8 +275,10 @@ gen_triangle (TestSignal *self, uint32_t n_samples, const uint32_t period)
 {
 	float *out = self->output;
 	uint32_t k_cnt = self->k_cnt % period;
+	const float level = self->lvl_coeff;
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		out[i] = -1.f + 2.f * fabsf (1 - 2.f * k_cnt / (float) period);
+		out[i] *= level;
 		k_cnt = (k_cnt + 1) % period;
 	}
 	self->k_cnt = k_cnt;
@@ -289,10 +293,11 @@ gen_sine_log_sweep (TestSignal *self, uint32_t n_samples)
 	const uint32_t swp_period = self->swp_period;
 	const double swp_log_a = self->swp_log_a;
 	const double swp_log_b = self->swp_log_b;
+	const float level = self->lvl_coeff;
 
 	for (uint32_t i = 0 ; i < n_samples; ++i) {
 		const double phase = swp_log_a * exp (swp_log_b * swp_cnt) - swp_log_a;
-		out[i] = .12589f * sin (2. * M_PI * (phase - floor (phase)));
+		out[i] = level * sin (2. * M_PI * (phase - floor (phase)));
 		swp_cnt = (swp_cnt + 1) % swp_period;
 	}
 	self->swp_cnt = swp_cnt;
