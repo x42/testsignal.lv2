@@ -3,6 +3,7 @@ OPTIMIZATIONS ?= -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -O3 
 PREFIX ?= /usr/local
 CFLAGS ?= $(OPTIMIZATIONS) -Wall
 
+PKG_CONFIG?=pkg-config
 STRIP?=strip
 STRIPFLAGS?=-s
 
@@ -46,12 +47,12 @@ LV2VERSION=$(testsignal_VERSION)
 include git2lv2.mk
 
 # check for build-dependencies
-ifeq ($(shell pkg-config --exists lv2 || echo no), no)
+ifeq ($(shell $(PKG_CONFIG) --exists lv2 || echo no), no)
   $(error "LV2 SDK was not found")
 endif
 
 override CFLAGS += -fPIC -std=c99
-override CFLAGS += `pkg-config --cflags lv2`
+override CFLAGS += `$(PKG_CONFIG) --cflags lv2`
 
 # build target definitions
 default: all
