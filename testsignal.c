@@ -75,6 +75,7 @@ typedef struct {
 	// pseudo-random number state
 #ifdef PCGRANDOM
 	uint64_t rseed;
+	uint64_t rinc;
 #else
 	uint32_t rseed;
 #endif
@@ -93,7 +94,7 @@ rand_int (TestSignal *self)
 {
 #ifdef PCGRANDOM
 	uint64_t oldstate = self->rseed;
-	self->rseed = oldstate * 6364136223846793005ULL + 1;
+	self->rseed = oldstate * 6364136223846793005ULL + self->rinc;
 	uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
 	uint32_t rot = oldstate >> 59u;
 	return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
@@ -115,9 +116,9 @@ static inline float
 rand_float (TestSignal *self)
 {
 #ifdef PCGRANDOM
-	return (rand_int (self) / 2147483648.f) - 1.f;
+	return (rand_int (self) / 2147483647.5f) - 1.f;
 #else
-	return (rand_int (self) / 1073741824.f) - 1.f;
+	return (rand_int (self) / 1073741823.5f) - 1.f;
 #endif
 }
 
@@ -330,7 +331,12 @@ instantiate (const LV2_Descriptor*     descriptor,
 	self->swp_log_a = f_min / (self->swp_log_b * rate);
 
 #ifdef PCGRANDOM
-	self->rseed = time (NULL) ^ (intptr_t)self;
+	uint64_t initseq = (intptr_t)&f_max;
+	self->rseed = 0;
+	self->rinc = (initseq << 1) | 1;
+	rand_int (self);
+	self->rseed += time (NULL) ^ (intptr_t)self;
+	rand_int (self);
 #else
 	self->rseed = (time (NULL) + (intptr_t)self) % INT_MAX;
 	if (self->rseed == 0) self->rseed = 1;
