@@ -28,7 +28,7 @@ Install
 Compiling this plugin requires the LV2 SDK, gnu-make and a c-compiler.
 
 ```bash
-  git clone git://github.com/x42/testsignal.lv2.git
+  git clone https://github.com/x42/testsignal.lv2.git
   cd testsignal.lv2
   make
   sudo make install PREFIX=/usr
