@@ -115,7 +115,15 @@ rand_int (TestSignal *self)
 static inline float
 rand_float (TestSignal *self)
 {
-#ifdef PCGRANDOM
+#if 0
+	/* This may (or may not) be more efficient. However
+	 * 0.f occurs twice as -0 and +0
+	 */
+	uint32_t r = rand_int (self);
+	uint32_t neg = (r & 0x800000) ? 0x80000000 : 0;
+	union { uint32_t u32; float f; } u = { .u32 = (r & 0x7fffff) | 0x3f800000 | neg };
+	return neg ? u.f + 1.f : u.f - 1.f;
+#elif defined PCGRANDOM
 	return (rand_int (self) / 2147483647.5f) - 1.f;
 #else
 	return (rand_int (self) / 1073741823.5f) - 1.f;
