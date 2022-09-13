@@ -20,13 +20,13 @@
 #define _GNU_SOURCE // needed for M_PI
 #endif
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <math.h>
-#include <time.h>
 #include <limits.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #include "lv2/lv2plug.in/ns/lv2core/lv2.h"
 
@@ -52,13 +52,13 @@ typedef struct {
 	float* output;
 
 	// signal level
-	float  lvl_db; // corresponds to 'reflevel'
-	float  lvl_coeff_target;
-	float  lvl_coeff;
+	float lvl_db; // corresponds to 'reflevel'
+	float lvl_coeff_target;
+	float lvl_coeff;
 
 	// sine/square wave generator state
-	float  phase;
-	float  phase_inc;
+	float phase;
+	float phase_inc;
 
 	// impulse period counters
 	uint32_t k_cnt;
@@ -86,17 +86,17 @@ typedef struct {
 
 } TestSignal;
 
-
-/* pseudo-random number generators */
+/* *********************************
+ * pseudo-random number generators */
 
 static inline uint32_t
-rand_int (TestSignal *self)
+rand_int (TestSignal* self)
 {
 #ifdef PCGRANDOM
-	uint64_t oldstate = self->rseed;
-	self->rseed = oldstate * 6364136223846793005ULL + self->rinc;
+	uint64_t oldstate   = self->rseed;
+	self->rseed         = oldstate * 6364136223846793005ULL + self->rinc;
 	uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-	uint32_t rot = oldstate >> 59u;
+	uint32_t rot        = oldstate >> 59u;
 	return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
 #else
 	// 31bit Park-Miller-Carta Pseudo-Random Number Generator
@@ -113,7 +113,7 @@ rand_int (TestSignal *self)
 }
 
 static inline float
-rand_float (TestSignal *self)
+rand_float (TestSignal* self)
 {
 #if 0
 	/* This may (or may not) be more efficient. However
@@ -131,7 +131,7 @@ rand_float (TestSignal *self)
 }
 
 static float
-rand_gauss (TestSignal *self)
+rand_gauss (TestSignal* self)
 {
 	// Gaussian White Noise
 	// http://www.musicdsp.org/archive.php?classid=0#109
@@ -145,28 +145,28 @@ rand_gauss (TestSignal *self)
 	do {
 		x1 = rand_float (self);
 		x2 = rand_float (self);
-		r = x1 * x1 + x2 * x2;
+		r  = x1 * x1 + x2 * x2;
 	} while ((r >= 1.0f) || (r < 1e-22f));
 
 	r = sqrtf (-2.f * logf (r) / r);
 
 	self->g_pass = true;
-	self->g_rn1 = r * x2;
+	self->g_rn1  = r * x2;
 	return r * x1;
 }
 
-
-/* signal generators */
+/* *******************
+ * signal generators */
 
 static void
-gen_sine (TestSignal *self, uint32_t n_samples)
+gen_sine (TestSignal* self, uint32_t n_samples)
 {
-	float *out = self->output;
-	float phase = self->phase;
+	float*      out       = self->output;
+	float       phase     = self->phase;
 	const float phase_inc = self->phase_inc;
-	const float level = self->lvl_coeff;
+	const float level     = self->lvl_coeff;
 
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
+	for (uint32_t i = 0; i < n_samples; ++i) {
 		out[i] = level * sinf (phase);
 		phase += phase_inc;
 	}
@@ -174,44 +174,45 @@ gen_sine (TestSignal *self, uint32_t n_samples)
 }
 
 static void
-gen_square (TestSignal *self, uint32_t n_samples)
+gen_square (TestSignal* self, uint32_t n_samples)
 {
-	float *out = self->output;
-	double phase = self->phase;
+	float*      out       = self->output;
+	double      phase     = self->phase;
 	const float phase_inc = self->phase_inc;
-	const float level = self->lvl_coeff;
+	const float level     = self->lvl_coeff;
 
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = sinf (phase) >= 0 ? level : - level;
+	for (uint32_t i = 0; i < n_samples; ++i) {
+		out[i] = sinf (phase) >= 0 ? level : -level;
 		phase += phase_inc;
 	}
 	self->phase = fmod (phase, 2.0 * M_PI);
+	// TODO consider band-limiting, gibbs effect
 }
 
 static void
-gen_uniform_white (TestSignal *self, uint32_t n_samples)
+gen_uniform_white (TestSignal* self, uint32_t n_samples)
 {
 	const float level = self->lvl_coeff;
-	float *out = self->output;
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
+	float*      out   = self->output;
+	for (uint32_t i = 0; i < n_samples; ++i) {
 		out[i] = level * rand_float (self);
 	}
 }
 
 static void
-gen_gaussian_white (TestSignal *self, uint32_t n_samples)
+gen_gaussian_white (TestSignal* self, uint32_t n_samples)
 {
 	const float level = self->lvl_coeff * 0.7079f;
-	float *out = self->output;
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
+	float*      out   = self->output;
+	for (uint32_t i = 0; i < n_samples; ++i) {
 		out[i] = level * rand_gauss (self);
 	}
 }
 
 static void
-gen_pink (TestSignal *self, uint32_t n_samples)
+gen_pink (TestSignal* self, uint32_t n_samples)
 {
-	float *out = self->output;
+	float*      out   = self->output;
 	const float level = self->lvl_coeff / 2.527f;
 
 	// localize variables
@@ -229,14 +230,15 @@ gen_pink (TestSignal *self, uint32_t n_samples)
 		// NB. If 'white' consists of uniform random numbers,
 		// the pink noise will have an almost gaussian distribution.
 		const float white = level * rand_float (self);
-		_b0 = .99886f * _b0 + white * .0555179f;
-		_b1 = .99332f * _b1 + white * .0750759f;
-		_b2 = .96900f * _b2 + white * .1538520f;
-		_b3 = .86650f * _b3 + white * .3104856f;
-		_b4 = .55000f * _b4 + white * .5329522f;
-		_b5 = -.7616f * _b5 - white * .0168980f;
+
+		_b0    = .99886f * _b0 + white * .0555179f;
+		_b1    = .99332f * _b1 + white * .0750759f;
+		_b2    = .96900f * _b2 + white * .1538520f;
+		_b3    = .86650f * _b3 + white * .3104856f;
+		_b4    = .55000f * _b4 + white * .5329522f;
+		_b5    = -.7616f * _b5 - white * .0168980f;
 		*out++ = _b0 + _b1 + _b2 + _b3 + _b4 + _b5 + _b6 + white * 0.5362f;
-		_b6 = white * 0.115926f;
+		_b6    = white * 0.115926f;
 	}
 
 	// copy back variables
@@ -250,9 +252,9 @@ gen_pink (TestSignal *self, uint32_t n_samples)
 }
 
 static void
-gen_kroneker_delta (TestSignal *self, uint32_t n_samples, const uint32_t period)
+gen_kroneker_delta (TestSignal* self, uint32_t n_samples, const uint32_t period)
 {
-	float *out = self->output;
+	float* out = self->output;
 	memset (out, 0, n_samples * sizeof (float));
 
 	uint32_t k_cnt = self->k_cnt;
@@ -266,13 +268,13 @@ gen_kroneker_delta (TestSignal *self, uint32_t n_samples, const uint32_t period)
 }
 
 static void
-gen_sawtooth (TestSignal *self, uint32_t n_samples, const uint32_t period)
+gen_sawtooth (TestSignal* self, uint32_t n_samples, const uint32_t period)
 {
-	float *out = self->output;
-	uint32_t k_cnt = self->k_cnt % period;
+	float*      out   = self->output;
+	uint32_t    k_cnt = self->k_cnt % period;
 	const float level = self->lvl_coeff;
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = -1.f + 2.f * k_cnt / (float) period;
+	for (uint32_t i = 0; i < n_samples; ++i) {
+		out[i] = -1.f + 2.f * k_cnt / (float)period;
 		out[i] *= level;
 		k_cnt = (k_cnt + 1) % period;
 	}
@@ -280,13 +282,13 @@ gen_sawtooth (TestSignal *self, uint32_t n_samples, const uint32_t period)
 }
 
 static void
-gen_triangle (TestSignal *self, uint32_t n_samples, const uint32_t period)
+gen_triangle (TestSignal* self, uint32_t n_samples, const uint32_t period)
 {
-	float *out = self->output;
-	uint32_t k_cnt = self->k_cnt % period;
+	float*      out   = self->output;
+	uint32_t    k_cnt = self->k_cnt % period;
 	const float level = self->lvl_coeff;
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
-		out[i] = -1.f + 2.f * fabsf (1 - 2.f * k_cnt / (float) period);
+	for (uint32_t i = 0; i < n_samples; ++i) {
+		out[i] = -1.f + 2.f * fabsf (1 - 2.f * k_cnt / (float)period);
 		out[i] *= level;
 		k_cnt = (k_cnt + 1) % period;
 	}
@@ -294,25 +296,25 @@ gen_triangle (TestSignal *self, uint32_t n_samples, const uint32_t period)
 }
 
 static void
-gen_sine_log_sweep (TestSignal *self, uint32_t n_samples)
+gen_sine_log_sweep (TestSignal* self, uint32_t n_samples)
 {
-
-	float *out = self->output;
-	uint32_t swp_cnt = self->swp_cnt;
+	float*         out        = self->output;
+	uint32_t       swp_cnt    = self->swp_cnt;
 	const uint32_t swp_period = self->swp_period;
-	const double swp_log_a = self->swp_log_a;
-	const double swp_log_b = self->swp_log_b;
-	const float level = self->lvl_coeff;
+	const double   swp_log_a  = self->swp_log_a;
+	const double   swp_log_b  = self->swp_log_b;
+	const float    level      = self->lvl_coeff;
 
-	for (uint32_t i = 0 ; i < n_samples; ++i) {
+	for (uint32_t i = 0; i < n_samples; ++i) {
 		const double phase = swp_log_a * exp (swp_log_b * swp_cnt) - swp_log_a;
-		out[i] = level * sin (2. * M_PI * (phase - floor (phase)));
-		swp_cnt = (swp_cnt + 1) % swp_period;
+		out[i]             = level * sin (2. * M_PI * (phase - floor (phase)));
+		swp_cnt            = (swp_cnt + 1) % swp_period;
 	}
 	self->swp_cnt = swp_cnt;
 }
 
-/* LV2 */
+/* *****
+ * LV2 */
 
 static LV2_Handle
 instantiate (const LV2_Descriptor*     descriptor,
@@ -326,7 +328,7 @@ instantiate (const LV2_Descriptor*     descriptor,
 
 	TestSignal* self = (TestSignal*)calloc (1, sizeof (TestSignal));
 
-	self->phase_inc = 2 * M_PI * 1000 / rate;
+	self->phase_inc   = 2 * M_PI * 1000 / rate;
 	self->k_period100 = rate / 100;
 	self->k_period1   = rate;
 	self->k_period5s  = rate * 5;
@@ -334,20 +336,23 @@ instantiate (const LV2_Descriptor*     descriptor,
 	// log frequency sweep
 	const double f_min = 20.;
 	const double f_max = (rate * .5) < 20000. ? (rate * .5) : 20000.;
+
 	self->swp_period = ceil (10.0 * rate); // 10 seconds
-	self->swp_log_b = log (f_max / f_min) / self->swp_period;
-	self->swp_log_a = f_min / (self->swp_log_b * rate);
+	self->swp_log_b  = log (f_max / f_min) / self->swp_period;
+	self->swp_log_a  = f_min / (self->swp_log_b * rate);
 
 #ifdef PCGRANDOM
 	uint64_t initseq = (intptr_t)&f_max;
-	self->rseed = 0;
-	self->rinc = (initseq << 1) | 1;
+	self->rseed      = 0;
+	self->rinc       = (initseq << 1) | 1;
 	rand_int (self);
 	self->rseed += time (NULL) ^ (intptr_t)self;
 	rand_int (self);
 #else
 	self->rseed = (time (NULL) + (intptr_t)self) % INT_MAX;
-	if (self->rseed == 0) self->rseed = 1;
+	if (self->rseed == 0) {
+		self->rseed = 1;
+	}
 #endif
 
 	return (LV2_Handle)self;
@@ -361,15 +366,15 @@ connect_port (LV2_Handle instance,
 	TestSignal* self = (TestSignal*)instance;
 
 	switch ((PortIndex)port) {
-	case TST_MODE:
-		self->mode = data;
-		break;
-	case TST_REFLEV:
-		self->reflevel = data;
-		break;
-	case TST_OUTPUT:
-		self->output = data;
-		break;
+		case TST_MODE:
+			self->mode = data;
+			break;
+		case TST_REFLEV:
+			self->reflevel = data;
+			break;
+		case TST_OUTPUT:
+			self->output = data;
+			break;
 	}
 }
 
@@ -379,15 +384,20 @@ run (LV2_Handle instance, uint32_t n_samples)
 	TestSignal* self = (TestSignal*)instance;
 	if (self->lvl_db != *self->reflevel) {
 		self->lvl_db = *self->reflevel;
-		float db = self->lvl_db;
-		if (db < -24) db = -24;
-		if (db > -9)  db = -9;
+		float db     = self->lvl_db;
+		if (db < -24) {
+			db = -24;
+		}
+		if (db > -9) {
+			db = -9;
+		}
 		self->lvl_coeff_target = powf (10, 0.05 * db);
 	}
 
 	self->lvl_coeff += .1 * (self->lvl_coeff_target - self->lvl_coeff) + 1e-12;
 
 	int mode = rint (*self->mode);
+	/* clang-format off */
 	if (mode <= 0)      { gen_sine (self, n_samples); }
 	else if (mode <= 1) { gen_square (self, n_samples); }
 	else if (mode <= 2) { gen_uniform_white (self, n_samples); }
@@ -397,8 +407,9 @@ run (LV2_Handle instance, uint32_t n_samples)
 	else if (mode <= 6) { gen_sine_log_sweep (self, n_samples); }
 	else if (mode <= 7) { gen_kroneker_delta (self, n_samples, self->k_period1); }
 	else if (mode <= 8) { gen_kroneker_delta (self, n_samples, self->k_period5s); }
-	else if (mode <= 9) { gen_sawtooth  (self, n_samples, self->k_period100); }
-	else                { gen_triangle  (self, n_samples, self->k_period100); }
+	else if (mode <= 9) { gen_sawtooth (self, n_samples, self->k_period100); }
+	else                { gen_triangle (self, n_samples, self->k_period100); }
+	/* clang-format on */
 }
 
 static void
@@ -426,18 +437,18 @@ static const LV2_Descriptor descriptor = {
 
 #undef LV2_SYMBOL_EXPORT
 #ifdef _WIN32
-#    define LV2_SYMBOL_EXPORT __declspec(dllexport)
+#  define LV2_SYMBOL_EXPORT __declspec(dllexport)
 #else
-#    define LV2_SYMBOL_EXPORT  __attribute__ ((visibility ("default")))
+#  define LV2_SYMBOL_EXPORT __attribute__ ((visibility ("default")))
 #endif
 LV2_SYMBOL_EXPORT
 const LV2_Descriptor*
 lv2_descriptor (uint32_t index)
 {
 	switch (index) {
-	case 0:
-		return &descriptor;
-	default:
-		return NULL;
+		case 0:
+			return &descriptor;
+		default:
+			return NULL;
 	}
 }
