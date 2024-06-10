@@ -104,13 +104,12 @@ rand_int (TestSignal* self)
 	return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
 #else
 	// 31bit Park-Miller-Carta Pseudo-Random Number Generator
-	// http://www.firstpr.com.au/dsp/rand31/
 	uint32_t hi, lo;
-	lo = 16807 * (self->rseed & 0xffff);
-	hi = 16807 * (self->rseed >> 16);
+	lo = 48271 * (self->rseed & 0x7fff);
+	hi = 48271 * (self->rseed >> 15);
 
-	lo += (hi & 0x7fff) << 16;
-	lo += hi >> 15;
+	lo += (hi & 0xffff) << 15;
+	lo += hi >> 16;
 	lo = (lo & 0x7fffffff) + (lo >> 31);
 	return (self->rseed = lo);
 #endif
